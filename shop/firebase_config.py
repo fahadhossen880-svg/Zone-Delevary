@@ -1,29 +1,33 @@
 import firebase_admin
 from firebase_admin import credentials, storage, db
-import json
-import os
-from pathlib import Path
 from decouple import config
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-
 # Firebase configuration
-FIREBASE_CREDENTIALS = str(BASE_DIR / config('FIREBASE_CREDENTIALS', default='zone-delevary-firebase-adminsdk-fbsvc-b0b84509c0.json'))
 FIREBASE_DATABASE_URL = config('FIREBASE_DATABASE_URL', default='')
+
+# Firebase credentials from environment variables
+firebase_creds = {
+    "type": "service_account",
+    "project_id": config('FIREBASE_PROJECT_ID'),
+    "private_key_id": config('FIREBASE_PRIVATE_KEY_ID'),
+    "private_key": config('FIREBASE_PRIVATE_KEY').replace('\\n', '\n'),
+    "client_email": config('FIREBASE_CLIENT_EMAIL'),
+    "client_id": config('FIREBASE_CLIENT_ID'),
+    "auth_uri": config('FIREBASE_AUTH_URI'),
+    "token_uri": config('FIREBASE_TOKEN_URI'),
+    "auth_provider_x509_cert_url": config('FIREBASE_AUTH_PROVIDER_X509_CERT_URL'),
+    "client_x509_cert_url": config('FIREBASE_CLIENT_X509_CERT_URL'),
+    "universe_domain": config('FIREBASE_UNIVERSE_DOMAIN'),
+}
 
 
 def _guess_database_url():
     if FIREBASE_DATABASE_URL:
         return FIREBASE_DATABASE_URL
 
-    try:
-        with open(FIREBASE_CREDENTIALS, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        project_id = data.get('project_id')
-        if project_id:
-            return f'https://{project_id}.firebaseio.com'
-    except Exception:
-        pass
+    project_id = firebase_creds.get('project_id')
+    if project_id:
+        return f'https://{project_id}.firebaseio.com'
 
     return None
 
@@ -34,7 +38,7 @@ try:
     firebase_admin.get_app()
 except ValueError:
     try:
-        creds = credentials.Certificate(FIREBASE_CREDENTIALS)
+        creds = credentials.Certificate(firebase_creds)
         options = {
             'storageBucket': 'zone-delevary.appspot.com'
         }
