@@ -43,7 +43,8 @@ else:
     ALLOWED_HOSTS = [
         'localhost',
         '127.0.0.1',
-        'delevaryzone-1.onrender.com',
+        'zone-delevary.onrender.com',
+        'zonedelevary.store',
     ]
 
 INSTALLED_APPS = [
