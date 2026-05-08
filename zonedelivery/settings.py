@@ -36,7 +36,7 @@ DEBUG = config('DEBUG', default=False if IS_PRODUCTION else True, cast=bool)
 # Allowed Hosts Configuration
 if IS_PRODUCTION:
     # Render production - hardcoded for reliability
-    ALLOWED_HOSTS = ['*']
+    ALLOWED_HOSTS = ['zone-delevary.onrender.com', 'zonedelevary.store', 'www.zonedelevary.store']
 else:
     # Development (ngrok, localhost)
     ALLOWED_HOSTS = [
