@@ -35,8 +35,9 @@ DEBUG = config('DEBUG', default=False if IS_PRODUCTION else True, cast=bool)
 
 # Allowed Hosts Configuration
 if IS_PRODUCTION:
-    # Render production - hardcoded for reliability
-    ALLOWED_HOSTS = ['zone-delevary.onrender.com', 'zonedelevary.store', 'www.zonedelevary.store']
+    # Render production - read from environment variables
+    env_hosts = os.getenv('ALLOWED_HOSTS', 'zone-delevary.onrender.com,zonedelevary.store,www.zonedelevary.store')
+    ALLOWED_HOSTS = [host.strip() for host in env_hosts.split(',')]
 else:
     # Development (ngrok, localhost)
     ALLOWED_HOSTS = [
