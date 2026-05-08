@@ -76,7 +76,7 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [BASE_DIR / 'templates'],
-        'APP_DIRS': True,
+        'APP_DIRS': not IS_PRODUCTION,  # False in production when using custom loaders
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
@@ -294,7 +294,7 @@ ATOMIC_REQUESTS = IS_PRODUCTION
 
 # Optimize queries in templates
 if IS_PRODUCTION:
-    # Use cached templates
+    # Use cached templates with custom loaders
     TEMPLATES[0]['OPTIONS']['loaders'] = [
         ('django.template.loaders.cached.Loader', [
             'django.template.loaders.filesystem.Loader',
