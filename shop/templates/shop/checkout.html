@@ -531,6 +531,25 @@ function initCheckoutMap() {
     }
 }
 
+// Update center location preview (for map center pointer)
+function updateCenterLocationPreview() {
+    if (!checkoutMap) return;
+    
+    // Get center coordinates of the map
+    const center = checkoutMap.getCenter();
+    const lat = center.lat();
+    const lng = center.lng();
+    
+    // Store in data attributes for later use
+    const latitudeInput = document.getElementById('latitude');
+    const longitudeInput = document.getElementById('longitude');
+    
+    if (latitudeInput && longitudeInput) {
+        latitudeInput.dataset.previewLat = lat.toFixed(6);
+        longitudeInput.dataset.previewLng = lng.toFixed(6);
+    }
+}
+
 // Update map with location marker
 function updateMapWithLocation(lat, lng) {
     if (!checkoutMap) return;
