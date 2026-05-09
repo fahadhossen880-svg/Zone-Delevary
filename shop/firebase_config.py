@@ -1,44 +1,112 @@
+import os
 import firebase_admin
 from firebase_admin import credentials, storage, db
 from decouple import config
 
 # Firebase configuration
 FIREBASE_DATABASE_URL = config('FIREBASE_DATABASE_URL', default='')
+FIREBASE_CREDENTIALS_PATH = config('FIREBASE_CREDENTIALS', default='').strip()
+FIREBASE_PROJECT_ID = config('FIREBASE_PROJECT_ID', default='')
+FIREBASE_PRIVATE_KEY_ID = config('FIREBASE_PRIVATE_KEY_ID', default='')
+FIREBASE_PRIVATE_KEY = config('FIREBASE_PRIVATE_KEY', default='')
+FIREBASE_CLIENT_EMAIL = config('FIREBASE_CLIENT_EMAIL', default='')
+FIREBASE_CLIENT_ID = config('FIREBASE_CLIENT_ID', default='')
+FIREBASE_AUTH_URI = config('FIREBASE_AUTH_URI', default='https://accounts.google.com/o/oauth2/auth')
+FIREBASE_TOKEN_URI = config('FIREBASE_TOKEN_URI', default='https://oauth2.googleapis.com/token')
+FIREBASE_AUTH_PROVIDER_X509_CERT_URL = config('FIREBASE_AUTH_PROVIDER_X509_CERT_URL', default='https://www.googleapis.com/oauth2/v1/certs')
+FIREBASE_CLIENT_X509_CERT_URL = config('FIREBASE_CLIENT_X509_CERT_URL', default='')
+FIREBASE_UNIVERSE_DOMAIN = config('FIREBASE_UNIVERSE_DOMAIN', default='googleapis.com')
 
-# Firebase credentials from environment variables
-firebase_creds = {
-    "type": "service_account",
-    "project_id": config('FIREBASE_PROJECT_ID'),
-    "private_key_id": config('FIREBASE_PRIVATE_KEY_ID'),
-    "private_key": config('FIREBASE_PRIVATE_KEY').replace('\\n', '\n'),
-    "client_email": config('FIREBASE_CLIENT_EMAIL'),
-    "client_id": config('FIREBASE_CLIENT_ID'),
-    "auth_uri": config('FIREBASE_AUTH_URI'),
-    "token_uri": config('FIREBASE_TOKEN_URI'),
-    "auth_provider_x509_cert_url": config('FIREBASE_AUTH_PROVIDER_X509_CERT_URL'),
-    "client_x509_cert_url": config('FIREBASE_CLIENT_X509_CERT_URL'),
-    "universe_domain": config('FIREBASE_UNIVERSE_DOMAIN'),
-}
+
+def normalize_url(value, default=None):
+    if not value:
+        return default
+
+    value = value.strip().strip('"').strip("'")
+
+    if value.startswith('https://') or value.startswith('http://'):
+        return value
+    if value.startswith('https:/') and not value.startswith('https://'):
+        return 'https://' + value[len('https:/'):].lstrip('/')
+    if value.startswith('http:/') and not value.startswith('http://'):
+        return 'http://' + value[len('http:/'):].lstrip('/')
+    if value.startswith('//'):
+        return 'https:' + value
+    if value.startswith('/'):
+        return f'https://{value.lstrip('/')}'
+
+    return value
 
 
 def _guess_database_url():
     if FIREBASE_DATABASE_URL:
-        return FIREBASE_DATABASE_URL
+        return normalize_url(FIREBASE_DATABASE_URL)
 
-    project_id = firebase_creds.get('project_id')
-    if project_id:
-        return f'https://{project_id}.firebaseio.com'
+    if FIREBASE_PROJECT_ID:
+        # Try the old Realtime DB URL pattern. If your project uses the newer default
+        # Realtime DB domain, set FIREBASE_DATABASE_URL explicitly in .env.
+        return f'https://{FIREBASE_PROJECT_ID}.firebaseio.com'
 
     return None
 
 FIREBASE_DATABASE_URL = _guess_database_url()
+if FIREBASE_DATABASE_URL:
+    print(f'🔌 Firebase Realtime Database URL resolved as: {FIREBASE_DATABASE_URL}')
+else:
+    print('⚠️ Firebase Realtime Database URL is not configured; realtime DB writes will fail.')
+
+
+def _resolve_service_account_path(path):
+    if not path:
+        return None
+
+    if os.path.isabs(path) and os.path.exists(path):
+        return path
+
+    candidate = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', path))
+    if os.path.exists(candidate):
+        return candidate
+
+    if os.path.exists(path):
+        return path
+
+    return None
+
+
+def _build_service_account_info():
+    private_key = FIREBASE_PRIVATE_KEY.strip().strip('"').strip("'")
+    if private_key:
+        return {
+            'type': 'service_account',
+            'project_id': FIREBASE_PROJECT_ID,
+            'private_key_id': FIREBASE_PRIVATE_KEY_ID,
+            'private_key': private_key.replace('\\n', '\n'),
+            'client_email': FIREBASE_CLIENT_EMAIL,
+            'client_id': FIREBASE_CLIENT_ID,
+            'auth_uri': normalize_url(FIREBASE_AUTH_URI, 'https://accounts.google.com/o/oauth2/auth'),
+            'token_uri': normalize_url(FIREBASE_TOKEN_URI, 'https://oauth2.googleapis.com/token'),
+            'auth_provider_x509_cert_url': normalize_url(FIREBASE_AUTH_PROVIDER_X509_CERT_URL, 'https://www.googleapis.com/oauth2/v1/certs'),
+            'client_x509_cert_url': normalize_url(FIREBASE_CLIENT_X509_CERT_URL),
+            'universe_domain': FIREBASE_UNIVERSE_DOMAIN,
+        }
+    return None
+
+
+FIREBASE_CREDENTIALS_FILE = _resolve_service_account_path(FIREBASE_CREDENTIALS_PATH)
 
 # Initialize Firebase (শুধু একবার initialize করুন)
 try:
     firebase_admin.get_app()
 except ValueError:
     try:
-        creds = credentials.Certificate(firebase_creds)
+        if FIREBASE_CREDENTIALS_FILE:
+            creds = credentials.Certificate(FIREBASE_CREDENTIALS_FILE)
+        else:
+            service_account_info = _build_service_account_info()
+            if not service_account_info:
+                raise ValueError('Firebase service account credentials are not configured')
+            creds = credentials.Certificate(service_account_info)
+
         options = {
             'storageBucket': 'zone-delevary.appspot.com'
         }
@@ -46,11 +114,11 @@ except ValueError:
             options['databaseURL'] = FIREBASE_DATABASE_URL
 
         firebase_admin.initialize_app(creds, options)
-        print("✅ Firebase initialized successfully!")
+        print('✅ Firebase initialized successfully!')
         if FIREBASE_DATABASE_URL:
-            print(f"   Realtime DB: {FIREBASE_DATABASE_URL}")
+            print(f'   Realtime DB: {FIREBASE_DATABASE_URL}')
     except Exception as e:
-        print(f"❌ Firebase initialization error: {e}")
+        print(f'❌ Firebase initialization error: {e}')
 
 
 def get_firebase_bucket():
@@ -71,7 +139,7 @@ def get_firebase_db_ref(path=None):
     try:
         return db.reference(path or '/')
     except Exception as e:
-        print(f"Error getting Firebase DB reference: {e}")
+        print(f"Error getting Firebase DB reference ({path or '/'}), URL={FIREBASE_DATABASE_URL}: {e}")
         return None
 
 
