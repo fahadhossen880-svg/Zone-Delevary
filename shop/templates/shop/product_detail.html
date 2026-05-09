@@ -101,6 +101,12 @@
 </div>
 
 <script>
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+           document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+           document.cookie.split('; ').find(row => row.trim().startsWith('csrftoken='))?.split('=')[1] || '';
+}
+
 // Function to add to cart silently without any message
 function addToCartSilently(productId) {
     const isAuthenticated = document.body.dataset.isAuthenticated === '1';
@@ -112,12 +118,12 @@ function addToCartSilently(productId) {
     }
 
     // Get CSRF token
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
-                      document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+    const csrfToken = getCsrfToken();
     
     // Make AJAX request
     fetch(`/api/add-to-cart/${productId}/`, {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
             'X-CSRFToken': csrfToken,

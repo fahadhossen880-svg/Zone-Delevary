@@ -60,6 +60,12 @@ function showToast(title, message, type = 'success') {
     });
 }
 
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+           document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+           document.cookie.split('; ').find(row => row.trim().startsWith('csrftoken='))?.split('=')[1] || '';
+}
+
 // Add to cart with AJAX
 function addToCartAjax(productId, clickEvent) {
     if (!isUserAuthenticated()) {
@@ -67,8 +73,7 @@ function addToCartAjax(productId, clickEvent) {
         return;
     }
 
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
-                      document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+    const csrfToken = getCsrfToken();
     
     // Show loading state
     const button = clickEvent?.target?.closest('.btn');
@@ -79,6 +84,7 @@ function addToCartAjax(productId, clickEvent) {
     
     fetch(`/api/add-to-cart/${productId}/`, {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
             'X-CSRFToken': csrfToken,
