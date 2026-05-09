@@ -61,7 +61,7 @@ function showToast(title, message, type = 'success') {
 }
 
 // Add to cart with AJAX
-function addToCartAjax(productId) {
+function addToCartAjax(productId, clickEvent) {
     if (!isUserAuthenticated()) {
         window.location.href = getLoginUrl();
         return;
@@ -71,7 +71,7 @@ function addToCartAjax(productId) {
                       document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
     
     // Show loading state
-    const button = event.target.closest('.btn');
+    const button = clickEvent?.target?.closest('.btn');
     if (button) {
         button.disabled = true;
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> যোগ করা হচ্ছে...';
@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', function() {
         button.addEventListener('click', function(e) {
             e.preventDefault();
             const productId = this.getAttribute('data-product-id');
-            addToCartAjax(productId);
+            addToCartAjax(productId, e);
         });
     });
 });
