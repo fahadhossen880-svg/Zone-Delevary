@@ -984,6 +984,38 @@
             z-index: 9999 !important;
         }
 
+        /* Notification Toast Styles */
+        #notification-toast-container .toast {
+            animation: slideInRight 0.5s ease-out;
+            margin-bottom: 0.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Mobile responsive adjustments */
+        @media (max-width: 768px) {
+            #notification-toast-container {
+                top: 10px;
+                right: 10px;
+                left: 10px;
+                width: auto;
+            }
+            #notification-toast-container .toast {
+                font-size: 0.9rem;
+            }
+        }
+
     </style>
     
     <!-- Extra CSS for child templates -->
@@ -992,7 +1024,7 @@
     <!-- Cart AJAX Script -->
     <script src="{% static 'js/cart.js' %}"></script>
 </head>
-<body data-is-authenticated="{% if user.is_authenticated %}1{% else %}0{% endif %}" data-notifications-url="{% url 'get_notifications' %}" data-mark-all-read-url="{% url 'mark_all_notifications_read' %}" data-login-url="{% url 'login' %}">
+<body data-is-authenticated="{% if user.is_authenticated %}1{% else %}0{% endif %}" data-notifications-url="{% url 'get_notifications' %}" data-mark-all-read-url="{% url 'mark_all_notifications_read' %}" data-login-url="{% url 'login' %}" data-sound-manager-order="{% static 'notify/manager-order.mp3' %}" data-sound-order-confirmd="{% static 'notify/order-confirmd.mp3' %}" data-sound-order-push="{% static 'notify/order-push.mp3' %}">
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
         <div class="container-fluid">
@@ -1026,6 +1058,11 @@
                 const notificationsUrl = bodyElement.getAttribute('data-notifications-url');
                 const markAllReadUrl = bodyElement.getAttribute('data-mark-all-read-url');
                 const loginUrl = bodyElement.getAttribute('data-login-url');
+                const soundUrls = {
+                    'manager-order.mp3': bodyElement.getAttribute('data-sound-manager-order'),
+                    'order-confirmd.mp3': bodyElement.getAttribute('data-sound-order-confirmd'),
+                    'order-push.mp3': bodyElement.getAttribute('data-sound-order-push'),
+                };
                 
                 // ============ NOTIFICATION FUNCTIONS ============
                 
@@ -1049,6 +1086,9 @@
                                 const unreadNotif = data.notifications.find(n => !n.is_read);
                                 if (unreadNotif && unreadNotif.sound_file) {
                                     playNotificationSound(unreadNotif.sound_file);
+                                    // Show toast notification
+                                    const iconClass = getNotificationIconClass(unreadNotif.type);
+                                    showToastNotification(unreadNotif.title + ': ' + unreadNotif.message, getNotificationColor(unreadNotif.type), iconClass);
                                 }
                             }
                             previousUnreadCount = data.unread_count;
@@ -1136,6 +1176,19 @@
                     return colors[type] || 'info';
                 }
                 
+                function getNotificationIconClass(type) {
+                    const icons = {
+                        'order_confirmation': 'fas fa-check-circle',
+                        'order_processing': 'fas fa-hourglass-half',
+                        'order_picked': 'fas fa-box',
+                        'order_delivered': 'fas fa-check-double',
+                        'order_cancelled': 'fas fa-times-circle',
+                        'rider_assigned': 'fas fa-motorcycle',
+                        'general': 'fas fa-info-circle'
+                    };
+                    return icons[type] || icons['general'];
+                }
+                
                 // Helper function to get CSRF token
                 function getCsrfToken() {
                     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
@@ -1174,20 +1227,52 @@
                 // ============ SOUND NOTIFICATION FUNCTIONS ============
                 let previousUnreadCount = 0;
                 let playedNotificationIds = new Set();
+                const audioCache = {};
                 
                 function playNotificationSound(soundFile) {
                     if (!soundFile) return;
                     
                     try {
-                        const soundPath = '/media/notify/' + soundFile;
-                        const audio = new Audio(soundPath);
-                        audio.volume = 0.7;
-                        audio.play().catch(err => {
-                            console.log('Could not play notification sound:', err);
-                        });
+                        const soundPath = soundUrls[soundFile] || '/static/notify/' + soundFile; // fallback
+                        if (!audioCache[soundPath]) {
+                            audioCache[soundPath] = new Audio(soundPath);
+                            audioCache[soundPath].volume = 0.7;
+                        }
+                        const audio = audioCache[soundPath];
+                        if (audio.paused || audio.ended) {
+                            audio.currentTime = 0;
+                            audio.play().catch(err => {
+                                console.log('Could not play notification sound:', err);
+                            });
+                        }
                     } catch (e) {
                         console.error('Error playing notification sound:', e);
                     }
+                }
+                
+                function showToastNotification(message, type = 'info', icon = 'fas fa-info-circle') {
+                    const container = document.getElementById('notification-toast-container');
+                    const toastId = 'toast-' + Date.now();
+                    const toastHTML = `
+                        <div id="${toastId}" class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                            <div class="d-flex">
+                                <div class="toast-body">
+                                    <i class="${icon} me-2"></i>${message}
+                                </div>
+                                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                            </div>
+                        </div>
+                    `;
+                    container.insertAdjacentHTML('beforeend', toastHTML);
+                    const toastElement = document.getElementById(toastId);
+                    const toast = new bootstrap.Toast(toastElement, {
+                        autohide: true,
+                        delay: 5000
+                    });
+                    toast.show();
+                    toastElement.addEventListener('hidden.bs.toast', () => {
+                        toastElement.remove();
+                    });
                 }
                 
                 // Load notification badge on page load
@@ -1375,6 +1460,10 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Toast Container for Notifications -->
+    <div id="notification-toast-container" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1050;">
     </div>
 
     <!-- Messages -->
