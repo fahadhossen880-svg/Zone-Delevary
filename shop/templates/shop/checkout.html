@@ -548,6 +548,12 @@ function updateCenterLocationPreview() {
         latitudeInput.dataset.previewLat = lat.toFixed(6);
         longitudeInput.dataset.previewLng = lng.toFixed(6);
     }
+    
+    console.log('[Map Center Updated]', {
+        lat: lat.toFixed(6),
+        lng: lng.toFixed(6),
+        zoom: checkoutMap.getZoom()
+    });
 }
 
 // Update map with location marker
@@ -576,16 +582,25 @@ function updateMapWithLocation(lat, lng) {
 
 // Confirm Location from Center Pointer
 function confirmMapSelection() {
-    const latPreview = document.getElementById('latitude').dataset.previewLat;
-    const lngPreview = document.getElementById('longitude').dataset.previewLng;
-    
-    if (!latPreview || !lngPreview) {
-        showLocationStatus('❌ অবস্থান পাওয়া যায়নি। দয়া করে পুনরায় চেষ্টা করুন।', 'danger');
+    // Get center coordinates directly from map
+    if (!checkoutMap) {
+        showLocationStatus('❌ ম্যাপ প্রস্তুত নয়। দয়া করে আবার চেষ্টা করুন।', 'danger');
+        console.error('[confirmMapSelection] Map not initialized');
         return;
     }
     
-    const lat = parseFloat(latPreview);
-    const lng = parseFloat(lngPreview);
+    const center = checkoutMap.getCenter();
+    const lat = center.lat();
+    const lng = center.lng();
+    
+    console.log('[confirmMapSelection] Confirmed location:', {lat: lat.toFixed(6), lng: lng.toFixed(6)});
+    
+    // Validate we have valid coordinates
+    if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+        showLocationStatus('❌ অবস্থান পাওয়া যায়নি। দয়া করে পুনরায় চেষ্টা করুন।', 'danger');
+        console.error('[confirmMapSelection] Invalid coordinates');
+        return;
+    }
     
     // Confirm the location in hidden inputs
     document.getElementById('latitude').value = lat.toFixed(6);
