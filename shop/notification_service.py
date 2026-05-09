@@ -196,12 +196,15 @@ def update_order_notifications(order, status):
                 profile__zone_assigned=order.zone
             )
             
+            manager_count = manager_users.count()
+            print(f"[NOTIFICATION] Order {order.order_id}: Found {manager_count} managers for zone '{order.zone.name}'")
+            
             customer_name = order.customer.get_full_name() or order.customer.username if order.customer else order.customer_phone
             title = '🔔 New Order Received'
             message = f'New Order #{order.order_id} from {customer_name} - ৳{order.total_amount} (Zone: {order.zone.name})'
             
             for manager in manager_users:
-                create_notification(
+                notif = create_notification(
                     user=manager,
                     notification_type='rider_assigned',
                     title=title,
@@ -209,6 +212,9 @@ def update_order_notifications(order, status):
                     order=order,
                     send_email=True
                 )
+                print(f"[NOTIFICATION] Manager notification created for {manager.username}: {notif.id if notif else 'FAILED'}")
+        else:
+            print(f"[NOTIFICATION] Order {order.order_id}: No zone assigned")
     
     elif status == 'approved':
         if order.customer:
