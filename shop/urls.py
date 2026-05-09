@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, re_path
 from . import views
 from . import admin_views
 
@@ -6,7 +6,7 @@ urlpatterns = [
     # Home & Auth
     path('', views.home, name='home'),
     path('product/<int:product_id>/', views.product_detail, name='product_detail'),
-    path('category/<slug:slug>/', views.category_detail, name='category_detail'),
+    re_path(r'^category/(?P<slug>[-\w]+)/$', views.category_detail, name='category_detail'),
     path('register/', views.register, name='register'),
     path('login/', views.user_login, name='login'),
     path('google-login/', views.google_login, name='google_login'),
