@@ -1736,7 +1736,7 @@
         // Register service worker for FCM
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('{% static "js/firebase-messaging-sw.js" %}')
+                navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' })
                     .then(function(registration) {
                         console.log('✅ Service Worker registered for FCM:', registration.scope);
                     })

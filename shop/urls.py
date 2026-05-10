@@ -1,8 +1,12 @@
 from django.urls import path, re_path
+from django.views.generic import TemplateView
 from . import views
 from . import admin_views
 
 urlpatterns = [
+    # Firebase service worker at site root
+    path('firebase-messaging-sw.js', TemplateView.as_view(template_name='shop/firebase-messaging-sw.js', content_type='application/javascript'), name='firebase_messaging_sw'),
+
     # Home & Auth
     path('', views.home, name='home'),
     path('product/<int:product_id>/', views.product_detail, name='product_detail'),
