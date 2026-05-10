@@ -1711,40 +1711,47 @@
 
     <!-- Firebase FCM Scripts -->
     {% if user.is_authenticated %}
+    <script>
+        window.firebaseConfig = {
+            apiKey: "{{ firebase_config.api_key|escapejs }}",
+            authDomain: "{{ firebase_config.auth_domain|escapejs }}",
+            projectId: "{{ firebase_config.project_id|escapejs }}",
+            storageBucket: "{{ firebase_config.storage_bucket|escapejs }}",
+            messagingSenderId: "{{ firebase_config.messaging_sender_id|escapejs }}",
+            appId: "{{ firebase_config.app_id|escapejs }}",
+            measurementId: "{{ firebase_config.measurement_id|escapejs }}",
+            vapidKey: "{{ firebase_config.vapid_key|escapejs }}"
+        };
+    </script>
     <script type="module">
         // Import Firebase FCM module
         import { requestFCMPermission } from '{% static "js/firebase-fcm.js" %}';
 
-        // Initialize FCM when page loads
-        document.addEventListener('DOMContentLoaded', async function() {
+        async function initializeFirebaseFCM() {
             console.log('🚀 Initializing Firebase FCM...');
 
-            // Request FCM permission and register token
-            const token = await requestFCMPermission();
-
-            if (token) {
-                console.log('✅ FCM ready for push notifications');
-            } else {
-                console.log('ℹ️  FCM not available or permission denied');
+            if (!('serviceWorker' in navigator)) {
+                console.log('❌ Service workers are not supported in this browser');
+                return;
             }
-        });
+
+            try {
+                const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
+                console.log('✅ Service Worker registered for FCM:', registration.scope);
+
+                const token = await requestFCMPermission(registration);
+                if (token) {
+                    console.log('✅ FCM ready for push notifications');
+                } else {
+                    console.log('ℹ️ FCM not available or permission denied');
+                }
+            } catch (error) {
+                console.log('❌ Firebase FCM initialization failed:', error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initializeFirebaseFCM);
     </script>
     {% endif %}
-
-    <!-- Service Worker Registration -->
-    <script>
-        // Register service worker for FCM
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' })
-                    .then(function(registration) {
-                        console.log('✅ Service Worker registered for FCM:', registration.scope);
-                    })
-                    .catch(function(error) {
-                        console.log('❌ Service Worker registration failed:', error);
-                    });
-            });
-        }
-    </script>
 </body>
 </html>
