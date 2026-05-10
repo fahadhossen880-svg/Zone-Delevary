@@ -145,9 +145,14 @@ def get_firebase_db_ref(path=None):
 
 def push_realtime_notification(notification):
     """একটি notification কে Firebase Realtime DB এ push করুন"""
+    if not FIREBASE_DATABASE_URL:
+        print(f"⚠️  Firebase Realtime Database not configured. Skipping notification sync for {notification.id}")
+        return False
+    
     try:
         ref = get_firebase_db_ref(f'notifications/{notification.user_id}/{notification.id}')
         if not ref:
+            print(f"❌ Failed to get Firebase DB reference for notification {notification.id}")
             return False
 
         data = {
@@ -163,17 +168,25 @@ def push_realtime_notification(notification):
             'created_at': notification.created_at.isoformat() if notification.created_at else None,
         }
         ref.set(data)
+        print(f"✅ Firebase notification synced: {notification.id}")
         return True
     except Exception as e:
-        print(f"Firebase push notification error: {e}")
+        print(f"❌ Firebase push notification error for ID {notification.id}: {type(e).__name__}: {str(e)}")
+        print(f"   Database URL: {FIREBASE_DATABASE_URL}")
+        print(f"   Notification: {notification.title}")
         return False
 
 
 def update_realtime_notification_status(notification):
     """Read / status update sync করুন Firebase Realtime DB এ"""
+    if not FIREBASE_DATABASE_URL:
+        print(f"⚠️  Firebase Realtime Database not configured. Skipping status update for {notification.id}")
+        return False
+    
     try:
         ref = get_firebase_db_ref(f'notifications/{notification.user_id}/{notification.id}')
         if not ref:
+            print(f"❌ Failed to get Firebase DB reference for updating notification {notification.id}")
             return False
 
         ref.update({
@@ -181,9 +194,10 @@ def update_realtime_notification_status(notification):
             'read_at': notification.read_at.isoformat() if notification.read_at else None,
             'is_deleted': notification.is_deleted,
         })
+        print(f"✅ Firebase notification status updated: {notification.id}")
         return True
     except Exception as e:
-        print(f"Firebase update notification status error: {e}")
+        print(f"❌ Firebase update notification status error for ID {notification.id}: {type(e).__name__}: {str(e)}")
         return False
 
 
@@ -287,3 +301,89 @@ def delete_from_firebase(destination_path):
         print(f"Firebase delete error: {e}")
     
     return False
+
+
+def diagnose_firebase_config():
+    """
+    Firebase configuration की diagnostic report generate करें
+    Server में Firebase issues debug करने के लिए उपयोगी
+    """
+    print("\n" + "="*60)
+    print("🔍 FIREBASE CONFIGURATION DIAGNOSTIC REPORT")
+    print("="*60)
+    
+    print("\n1️⃣  ENVIRONMENT VARIABLES:")
+    print(f"   ✓ FIREBASE_PROJECT_ID: {'✅ SET' if FIREBASE_PROJECT_ID else '❌ NOT SET'}")
+    print(f"   ✓ FIREBASE_DATABASE_URL: {'✅ SET' if FIREBASE_DATABASE_URL else '❌ NOT SET'}")
+    if FIREBASE_DATABASE_URL:
+        print(f"      → {FIREBASE_DATABASE_URL}")
+    print(f"   ✓ FIREBASE_CLIENT_EMAIL: {'✅ SET' if FIREBASE_CLIENT_EMAIL else '❌ NOT SET'}")
+    print(f"   ✓ FIREBASE_PRIVATE_KEY: {'✅ SET (****)' if FIREBASE_PRIVATE_KEY else '❌ NOT SET'}")
+    print(f"   ✓ FIREBASE_CREDENTIALS_FILE: {'✅ ' + FIREBASE_CREDENTIALS_FILE if FIREBASE_CREDENTIALS_FILE else '❌ NOT SET'}")
+    
+    print("\n2️⃣  FIREBASE INITIALIZATION:")
+    try:
+        app = firebase_admin.get_app()
+        print(f"   ✅ Firebase App initialized: {app.project_id if hasattr(app, 'project_id') else 'OK'}")
+    except Exception as e:
+        print(f"   ❌ Firebase App not initialized: {e}")
+    
+    print("\n3️⃣  DATABASE CONNECTIVITY TEST:")
+    try:
+        ref = get_firebase_db_ref('_test_connection')
+        if ref:
+            ref.set({'test': 'connection', 'timestamp': str(__import__('datetime').datetime.now())})
+            print(f"   ✅ Database write test: SUCCESS")
+            ref.delete()
+        else:
+            print(f"   ❌ Database reference is None")
+    except Exception as e:
+        print(f"   ❌ Database connectivity error: {type(e).__name__}: {str(e)}")
+    
+    print("\n4️⃣  STORAGE CONNECTIVITY TEST:")
+    try:
+        bucket = get_firebase_bucket()
+        if bucket:
+            print(f"   ✅ Storage bucket accessible: {bucket.name}")
+        else:
+            print(f"   ❌ Storage bucket is None")
+    except Exception as e:
+        print(f"   ❌ Storage connectivity error: {type(e).__name__}: {str(e)}")
+    
+    print("\n" + "="*60)
+    print("⚠️  FIXES FOR COMMON ISSUES:")
+    print("="*60)
+    print("""
+If you see 404 errors:
+1. Check FIREBASE_DATABASE_URL format: https://PROJECT_ID.firebaseio.com
+2. Verify FIREBASE_PROJECT_ID is correct in Firebase Console
+3. Ensure Realtime Database is enabled in Firebase Console
+4. Check Firebase Security Rules allow read/write from your app
+
+If credentials are not set:
+1. Download service account JSON from Firebase Console
+2. Set FIREBASE_CREDENTIALS path, or set individual env variables
+3. Restart the application
+
+To enable realtime notifications:
+1. Create Realtime Database in Firebase Console (Asia region recommended)
+2. Set proper Security Rules:
+   {
+     "rules": {
+       "notifications": {
+         "$uid": {
+           ".read": "$uid === auth.uid",
+           ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin' || $uid === auth.uid"
+         }
+       }
+     }
+   }
+""")
+    print("="*60 + "\n")
+    
+    return {
+        'project_id_set': bool(FIREBASE_PROJECT_ID),
+        'database_url_set': bool(FIREBASE_DATABASE_URL),
+        'database_url': FIREBASE_DATABASE_URL,
+        'credentials_set': bool(FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY),
+    }

@@ -145,15 +145,23 @@ def create_notification(user, notification_type, title, message, order=None, sen
         )
         
         # Push notification to Firebase Realtime DB for live sync
-        push_realtime_notification(notification)
+        # NOTE: Firebase errors should not break the notification system
+        try:
+            push_realtime_notification(notification)
+        except Exception as firebase_err:
+            print(f"⚠️  Firebase sync failed (notification still created): {firebase_err}")
 
         # Send email notification if enabled and requested
         if send_email:
-            send_notification_email(notification)
+            try:
+                send_notification_email(notification)
+            except Exception as email_err:
+                print(f"⚠️  Email send failed (notification still created): {email_err}")
         
+        print(f"✅ Notification created for {user.username}: {title}")
         return notification
     except Exception as e:
-        print(f"Error creating notification: {str(e)}")
+        print(f"❌ Error creating notification: {str(e)}")
         return None
 
 
@@ -206,7 +214,7 @@ def update_order_notifications(order, status):
             for manager in manager_users:
                 notif = create_notification(
                     user=manager,
-                    notification_type='rider_assigned',
+                    notification_type='general',  # Changed from 'rider_assigned' to 'general' for manager notifications
                     title=title,
                     message=message,
                     order=order,

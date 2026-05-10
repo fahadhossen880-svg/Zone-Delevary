@@ -43,6 +43,7 @@ else:
     ALLOWED_HOSTS = [
         'localhost',
         '127.0.0.1',
+        'testserver',  # For Django test client
         'zone-delevary.onrender.com',
         'zonedelevary.store',
         'www.zonedelevary.store',
