@@ -673,7 +673,7 @@ function requestLocationPermission() {
     requestPermissionBtn.disabled = true;
     requestPermissionBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> অনুরোধ করছি...';
     
-    showLocationStatus('📍 আপনার অবস্থান অনুরোধ করছি... অনুমতি দিতে আপনার স্ক্রিনের উপরে তাকান।', 'info');
+    showLocationStatus('📍 আপনার অবস্থান অনুরোধ করছি... waiting for location...', 'info');
     
     // AGGRESSIVE options: multiple retries with extended timeout
     const options = {

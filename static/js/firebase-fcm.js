@@ -2,20 +2,31 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
 import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging.js';
 
-// Firebase configuration (same as your backend)
-const firebaseConfig = window.firebaseConfig || {
-    apiKey: 'your-api-key',
-    authDomain: 'your-project.firebaseapp.com',
-    projectId: 'your-project-id',
-    storageBucket: 'your-project.appspot.com',
-    messagingSenderId: 'your-sender-id',
-    appId: 'your-app-id',
-    measurementId: 'your-measurement-id'
-};
+// Firebase configuration is injected into the page from Django env variables.
+let messaging = null;
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const messaging = getMessaging(app);
+function getFirebaseConfig() {
+    if (!window.firebaseConfig) {
+        console.error('Firebase config is not available on window.firebaseConfig');
+        return null;
+    }
+    return window.firebaseConfig;
+}
+
+function getMessagingInstance() {
+    if (messaging) {
+        return messaging;
+    }
+
+    const firebaseConfig = getFirebaseConfig();
+    if (!firebaseConfig || !firebaseConfig.apiKey) {
+        throw new Error('Firebase configuration is missing or incomplete. apiKey is required.');
+    }
+
+    const app = initializeApp(firebaseConfig);
+    messaging = getMessaging(app);
+    return messaging;
+}
 
 // Register FCM token with Django backend
 async function registerFCMToken(token) {
@@ -57,7 +68,8 @@ export async function requestFCMPermission(serviceWorkerRegistration = null) {
                 tokenOptions.serviceWorkerRegistration = serviceWorkerRegistration;
             }
 
-            const token = await getToken(messaging, tokenOptions);
+            const currentMessaging = getMessagingInstance();
+            const token = await getToken(currentMessaging, tokenOptions);
 
             if (token) {
                 console.log('✅ FCM token obtained:', token);
@@ -80,54 +92,58 @@ export async function requestFCMPermission(serviceWorkerRegistration = null) {
 }
 
 // Handle foreground messages
-onMessage(messaging, (payload) => {
-    console.log('📨 Foreground FCM message received:', payload);
+try {
+    const messagingInstance = getMessagingInstance();
+    onMessage(messagingInstance, (payload) => {
+        console.log('📨 Foreground FCM message received:', payload);
 
-    const { title, body, data } = payload.notification || {};
-    const icon = data?.icon || '/static/images/notification-icon.png';
+        const { title, body, data } = payload.notification || {};
+        const icon = data?.icon || '/static/images/notification-icon.png';
 
-    // Show browser notification
-    if (Notification.permission === 'granted') {
-        const notification = new Notification(title || 'ZoneDelivery', {
-            body: body || 'You have a new notification',
-            icon: icon,
-            badge: '/static/images/badge.png',
-            tag: data?.notification_id || 'zonedelivery-notification'
-        });
+        // Show browser notification
+        if (Notification.permission === 'granted') {
+            const notification = new Notification(title || 'ZoneDelivery', {
+                body: body || 'You have a new notification',
+                icon: icon,
+                badge: '/static/images/badge.png',
+                tag: data?.notification_id || 'zonedelivery-notification'
+            });
 
-        notification.onclick = function() {
-            window.focus();
-            notification.close();
+            notification.onclick = function() {
+                window.focus();
+                notification.close();
 
-            // Navigate based on notification type
-            if (data?.order_id) {
-                window.location.href = `/order/${data.order_id}/`;
-            } else {
-                window.location.href = '/notifications/';
-            }
-        };
+                // Navigate based on notification type
+                if (data?.order_id) {
+                    window.location.href = `/order/${data.order_id}/`;
+                } else {
+                    window.location.href = '/notifications/';
+                }
+            };
 
-        // Auto-close after 5 seconds
-        setTimeout(() => notification.close(), 5000);
-    }
+            // Auto-close after 5 seconds
+            setTimeout(() => notification.close(), 5000);
+        }
 
-    // Also show toast notification (your existing system)
-    if (typeof showToastNotification === 'function') {
-        showToastNotification(
-            `${title}: ${body}`,
-            'info',
-            'fas fa-bell'
-        );
-    }
+        // Also show toast notification (your existing system)
+        if (typeof showToastNotification === 'function') {
+            showToastNotification(
+                `${title}: ${body}`,
+                'info',
+                'fas fa-bell'
+            );
+        }
 
-    // Play notification sound (your existing system)
-    if (typeof playNotificationSound === 'function') {
-        playNotificationSound('order-push.mp3');
-    }
-});
+        // Play notification sound (your existing system)
+        if (typeof playNotificationSound === 'function') {
+            playNotificationSound('order-push.mp3');
+        }
+    });
+} catch (error) {
+    console.warn('Firebase foreground messaging not initialized:', error);
+}
 
 // Export for use in other scripts
 window.firebaseFCM = {
-    requestFCMPermission,
-    messaging
+    requestFCMPermission
 };
