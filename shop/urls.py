@@ -41,6 +41,9 @@ urlpatterns = [
     path('api/check-location/', views.api_check_location, name='api_check_location'),
     path('api/active-notices/', views.api_active_notices, name='api_active_notices'),
     
+    # FCM Token Registration
+    path('api/register-fcm-token/', views.register_fcm_token, name='register_fcm_token'),
+    
     # ============ ADMIN PANEL (CUSTOM) ============
     # Admin Dashboard
     path('dashboard/', admin_views.admin_dashboard, name='admin_dashboard'),

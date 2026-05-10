@@ -7,6 +7,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token }}">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+    <meta name="theme-color" content="#52C77B">
+    
     <title>{% block title %}ZoneDelivery{% endblock %}</title>
     
     <!-- Bootstrap 5 CDN -->
@@ -1702,6 +1707,44 @@
                 });
             });
         });
+    </script>
+
+    <!-- Firebase FCM Scripts -->
+    {% if user.is_authenticated %}
+    <script type="module">
+        // Import Firebase FCM module
+        import { requestFCMPermission } from '{% static "js/firebase-fcm.js" %}';
+
+        // Initialize FCM when page loads
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('🚀 Initializing Firebase FCM...');
+
+            // Request FCM permission and register token
+            const token = await requestFCMPermission();
+
+            if (token) {
+                console.log('✅ FCM ready for push notifications');
+            } else {
+                console.log('ℹ️  FCM not available or permission denied');
+            }
+        });
+    </script>
+    {% endif %}
+
+    <!-- Service Worker Registration -->
+    <script>
+        // Register service worker for FCM
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('{% static "js/firebase-messaging-sw.js" %}')
+                    .then(function(registration) {
+                        console.log('✅ Service Worker registered for FCM:', registration.scope);
+                    })
+                    .catch(function(error) {
+                        console.log('❌ Service Worker registration failed:', error);
+                    });
+            });
+        }
     </script>
 </body>
 </html>

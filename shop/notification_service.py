@@ -9,7 +9,7 @@ from django.conf import settings
 from django.utils import timezone
 from datetime import time
 from .models import Notification, NotificationPreference, Order
-from .firebase_config import push_realtime_notification
+from .firebase_config import push_realtime_notification, send_fcm_notification_to_user
 
 
 def should_notify_user(user, notification_type):
@@ -150,6 +150,18 @@ def create_notification(user, notification_type, title, message, order=None, sen
             push_realtime_notification(notification)
         except Exception as firebase_err:
             print(f"⚠️  Firebase sync failed (notification still created): {firebase_err}")
+
+        # Send FCM push notification to mobile devices
+        # NOTE: FCM errors should not break the notification system
+        try:
+            fcm_data = {
+                'notification_id': str(notification.id),
+                'type': notification.notification_type,
+                'order_id': notification.order.order_id if notification.order else None,
+            }
+            send_fcm_notification_to_user(user, title, message, fcm_data)
+        except Exception as fcm_err:
+            print(f"⚠️  FCM send failed (notification still created): {fcm_err}")
 
         # Send email notification if enabled and requested
         if send_email:

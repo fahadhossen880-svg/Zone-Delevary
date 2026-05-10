@@ -282,6 +282,25 @@ class NotificationPreference(models.Model):
         return f"Preferences for {self.user.username}"
 
 
+# FCM Device Token Model for Mobile Push Notifications
+class DeviceToken(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='device_tokens')
+    token = models.CharField(max_length=255, unique=True, help_text='FCM device token')
+    platform = models.CharField(max_length=20, choices=[('android', 'Android'), ('ios', 'iOS'), ('web', 'Web')], default='android')
+    device_id = models.CharField(max_length=100, blank=True, help_text='Unique device identifier')
+    is_active = models.BooleanField(default=True, help_text='Whether this token is still active')
+    last_used = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Device Token'
+        verbose_name_plural = 'Device Tokens'
+        unique_together = ['user', 'device_id']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.platform} ({self.device_id})"
+
+
 # Hero Slide Model - For Homepage Carousel
 class HeroSlide(models.Model):
     title = models.CharField(max_length=200)

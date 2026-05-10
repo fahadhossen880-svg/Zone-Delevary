@@ -1,0 +1,28 @@
+{
+    "name": "ZoneDelivery - Food Delivery",
+    "short_name": "ZoneDelivery",
+    "description": "Order food from your favorite restaurants with ZoneDelivery",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#E8F5E9",
+    "theme_color": "#52C77B",
+    "orientation": "portrait-primary",
+    "scope": "/",
+    "icons": [
+        {
+            "src": "/static/images/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/static/images/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": ["food", "delivery", "shopping"],
+    "lang": "en",
+    "dir": "ltr"
+}

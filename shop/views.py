@@ -788,6 +788,44 @@ def api_active_notices(request):
         }, status=500)
 
 
+@login_required
+def register_fcm_token(request):
+    """Register FCM token for web push notifications"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    
+    try:
+        import json
+        data = json.loads(request.body)
+        token = data.get('token')
+        platform = data.get('platform', 'web')
+        
+        if not token:
+            return JsonResponse({'success': False, 'error': 'Token is required'}, status=400)
+        
+        from .firebase_config import register_device_token
+        
+        device_token = register_device_token(request.user, token, platform)
+        
+        if device_token:
+            return JsonResponse({
+                'success': True,
+                'message': f'FCM token registered for {platform}',
+                'token_id': device_token.id
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'Failed to register FCM token'
+            }, status=500)
+            
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
 # ============ SHOPPING CART ============
 def get_cart(request):
     """Get cart from session"""

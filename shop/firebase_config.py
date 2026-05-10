@@ -1,6 +1,6 @@
 import os
 import firebase_admin
-from firebase_admin import credentials, storage, db
+from firebase_admin import credentials, storage, db, messaging
 from decouple import config
 
 # Firebase configuration
@@ -387,3 +387,177 @@ To enable realtime notifications:
         'database_url': FIREBASE_DATABASE_URL,
         'credentials_set': bool(FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY),
     }
+
+
+# FCM (Firebase Cloud Messaging) Functions for Mobile Push Notifications
+def send_fcm_notification(token, title, body, data=None, image_url=None):
+    """
+    Send FCM push notification to a single device token
+
+    Args:
+        token: FCM device token
+        title: Notification title
+        body: Notification body
+        data: Additional data payload (dict)
+        image_url: Image URL for rich notifications
+
+    Returns:
+        Message ID if successful, None if failed
+    """
+    try:
+        message = messaging.Message(
+            token=token,
+            notification=messaging.Notification(
+                title=title,
+                body=body,
+                image=image_url,
+            ),
+            data=data or {},
+            android=messaging.AndroidConfig(
+                priority='high',
+                notification=messaging.AndroidNotification(
+                    sound='default',
+                    channel_id='default',
+                    priority='high',
+                    default_sound=True,
+                ),
+            ),
+            apns=messaging.APNSConfig(
+                payload=messaging.APNSPayload(
+                    aps=messaging.Aps(
+                        sound='default',
+                        badge=1,
+                    ),
+                ),
+            ),
+        )
+
+        response = messaging.send(message)
+        print(f"✅ FCM notification sent: {response}")
+        return response
+
+    except messaging.UnregisteredError:
+        print(f"❌ FCM token unregistered, should remove: {token}")
+        # TODO: Mark token as inactive in database
+        return None
+    except Exception as e:
+        print(f"❌ FCM send error for token {token[:20]}...: {type(e).__name__}: {str(e)}")
+        return None
+
+
+def send_fcm_notification_to_user(user, title, body, data=None, image_url=None):
+    """
+    Send FCM push notification to all active device tokens of a user
+
+    Args:
+        user: User instance
+        title: Notification title
+        body: Notification body
+        data: Additional data payload (dict)
+        image_url: Image URL for rich notifications
+
+    Returns:
+        List of successful message IDs
+    """
+    from .models import DeviceToken
+
+    try:
+        # Get all active device tokens for this user
+        tokens = DeviceToken.objects.filter(
+            user=user,
+            is_active=True
+        ).values_list('token', flat=True)
+
+        if not tokens:
+            print(f"ℹ️  No active FCM tokens found for user {user.username}")
+            return []
+
+        successful_sends = []
+        for token in tokens:
+            message_id = send_fcm_notification(token, title, body, data, image_url)
+            if message_id:
+                successful_sends.append(message_id)
+
+        print(f"✅ FCM notifications sent to {len(successful_sends)}/{len(tokens)} devices for {user.username}")
+        return successful_sends
+
+    except Exception as e:
+        print(f"❌ Error sending FCM to user {user.username}: {type(e).__name__}: {str(e)}")
+        return []
+
+
+def send_fcm_notification_to_multiple_users(users, title, body, data=None, image_url=None):
+    """
+    Send FCM push notification to multiple users
+
+    Args:
+        users: List of User instances
+        title: Notification title
+        body: Notification body
+        data: Additional data payload (dict)
+        image_url: Image URL for rich notifications
+
+    Returns:
+        Dict with user-wise results
+    """
+    results = {}
+    for user in users:
+        results[user.id] = send_fcm_notification_to_user(user, title, body, data, image_url)
+    return results
+
+
+def register_device_token(user, token, platform='android', device_id=None):
+    """
+    Register or update a device token for FCM
+
+    Args:
+        user: User instance
+        token: FCM device token
+        platform: 'android', 'ios', or 'web'
+        device_id: Unique device identifier
+
+    Returns:
+        DeviceToken instance
+    """
+    from .models import DeviceToken
+
+    try:
+        device_token, created = DeviceToken.objects.update_or_create(
+            token=token,
+            defaults={
+                'user': user,
+                'platform': platform,
+                'device_id': device_id or token[:20],  # Use first 20 chars if no device_id
+                'is_active': True,
+            }
+        )
+
+        action = "registered" if created else "updated"
+        print(f"✅ Device token {action} for {user.username} ({platform})")
+        return device_token
+
+    except Exception as e:
+        print(f"❌ Error registering device token: {type(e).__name__}: {str(e)}")
+        return None
+
+
+def unregister_device_token(token):
+    """
+    Mark a device token as inactive (when user logs out or token expires)
+
+    Args:
+        token: FCM device token
+
+    Returns:
+        Boolean success
+    """
+    from .models import DeviceToken
+
+    try:
+        updated = DeviceToken.objects.filter(token=token).update(is_active=False)
+        if updated:
+            print(f"✅ Device token unregistered: {token[:20]}...")
+        return bool(updated)
+    except Exception as e:
+        print(f"❌ Error unregistering device token: {type(e).__name__}: {str(e)}")
+        return False
