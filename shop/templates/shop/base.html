@@ -1029,7 +1029,7 @@
     <!-- Cart AJAX Script -->
     <script src="{% static 'js/cart.js' %}"></script>
 </head>
-<body data-is-authenticated="{% if user.is_authenticated %}1{% else %}0{% endif %}" data-notifications-url="{% url 'get_notifications' %}" data-mark-all-read-url="{% url 'mark_all_notifications_read' %}" data-login-url="{% url 'login' %}" data-sound-manager-order="{% static 'notify/manager-order.mp3' %}" data-sound-order-confirmd="{% static 'notify/order-confirmd.mp3' %}" data-sound-order-push="{% static 'notify/order-push.mp3' %}">
+<body data-is-authenticated="{% if user.is_authenticated %}1{% else %}0{% endif %}" data-notifications-url="{% url 'get_notifications' %}" data-mark-all-read-url="{% url 'mark_all_notifications_read' %}" data-login-url="{% url 'login' %}" data-sound-manager-order="{% static 'notify/manager-order.mp3' %}" data-sound-order-confirmd="{% static 'notify/order-confirmd.mp3' %}" data-sound-order-push="{% static 'notify/order-push.mp3' %}" data-user-role="{% if user.is_authenticated %}{{ user.profile.role }}{% endif %}">
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
         <div class="container-fluid">
@@ -1063,11 +1063,15 @@
                 const notificationsUrl = bodyElement.getAttribute('data-notifications-url');
                 const markAllReadUrl = bodyElement.getAttribute('data-mark-all-read-url');
                 const loginUrl = bodyElement.getAttribute('data-login-url');
+                const userRole = bodyElement.getAttribute('data-user-role');
                 const soundUrls = {
                     'manager-order.mp3': bodyElement.getAttribute('data-sound-manager-order'),
                     'order-confirmd.mp3': bodyElement.getAttribute('data-sound-order-confirmd'),
                     'order-push.mp3': bodyElement.getAttribute('data-sound-order-push'),
                 };
+                
+                // Check if user should poll for notifications
+                const shouldPollNotifications = userRole === 'manager' || userRole === 'rider';
                 
                 // ============ NOTIFICATION FUNCTIONS ============
                 
@@ -1282,8 +1286,15 @@
                 document.addEventListener('DOMContentLoaded', function() {
                     if (userIsAuthenticated) {
                         loadNotifications();
-                        // Refresh notifications every 30 seconds
-                        setInterval(loadNotifications, 30000);
+                        
+                        // Only poll for managers and riders (every 30 seconds)
+                        // Customers get notifications only once on page load
+                        if (shouldPollNotifications) {
+                            console.log(`🔄 Setting up notification polling for ${userRole}`);
+                            setInterval(loadNotifications, 30000);
+                        } else {
+                            console.log(`📱 Customer notifications loaded once (no polling)`);
+                        }
                         
                         // Request browser notification permission
                         requestBrowserNotificationPermission();
