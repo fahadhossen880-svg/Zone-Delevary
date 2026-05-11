@@ -256,22 +256,12 @@ class Notification(models.Model):
             self.save(update_fields=['is_read'])
 
 
-# Notification Preferences Model
+# Notification Preferences Model (Simplified)
 class NotificationPreference(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='notification_preference')
-    order_updates = models.BooleanField(default=True, help_text='Get notified on order status updates')
-    order_confirmation = models.BooleanField(default=True, help_text='Get notified when order is confirmed')
-    rider_assignments = models.BooleanField(default=True, help_text='Get notified when rider is assigned')
-    general_notifications = models.BooleanField(default=True, help_text='Get notified about general updates')
-    email_on_order_updates = models.BooleanField(default=True, help_text='Send email on order updates')
-    email_on_delivery = models.BooleanField(default=True, help_text='Send email when order is delivered')
-    email_on_cancellation = models.BooleanField(default=True, help_text='Send email if order is cancelled')
-    email_digests = models.BooleanField(default=False, help_text='Receive daily digest of all notifications')
-    enable_sound = models.BooleanField(default=True, help_text='Play sound for new notifications')
-    enable_browser_notifications = models.BooleanField(default=True, help_text='Show browser notifications')
-    quiet_hours_enabled = models.BooleanField(default=False, help_text='Enable quiet hours (no notifications)')
-    quiet_hours_start = models.TimeField(null=True, blank=True, help_text='Quiet hours start time (HH:MM)')
-    quiet_hours_end = models.TimeField(null=True, blank=True, help_text='Quiet hours end time (HH:MM)')
+    # সব সময় notification পাবে - quiet hours বন্ধ
+    # সব notification type enable থাকবে
+    enabled = models.BooleanField(default=True, help_text='Enable all notifications')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -20,7 +20,6 @@ from .notification_service import (
 from .firebase_config import (
     set_user_location,
     update_realtime_notification_status,
-    push_notification_preferences,
 )
 import json
 import urllib.error
@@ -1139,38 +1138,14 @@ def checkout(request):
 
 # ============ NOTIFICATION VIEWS ============
 
-def get_sound_for_notification(notification_type):
-    """Map notification types to sound files"""
-    sound_mapping = {
-        'order_confirmation': 'order-confirmd.mp3',
-        'order_processing': 'order-push.mp3',
-        'order_picked': 'order-push.mp3',
-        'order_in_transit': 'order-push.mp3',
-        'order_delivered': 'order-push.mp3',
-        'order_cancelled': 'order-push.mp3',
-        'rider_assigned': 'manager-order.mp3',
-        'rider_near': 'order-push.mp3',
-        'payment_reminder': 'order-push.mp3',
-        'general': 'order-push.mp3',
-    }
-    return sound_mapping.get(notification_type, 'order-push.mp3')
-
-
 @login_required
 def get_notifications(request):
-    """Get all notifications for logged-in user with unread count"""
+    """সরল: Get all notifications for logged-in user"""
     notifications = Notification.objects.filter(
         user=request.user,
         is_deleted=False
     ).order_by('-created_at')[:10]
     unread_count = get_unread_count(request.user)
-    
-    # Check if user has sound notifications enabled
-    try:
-        user_prefs = request.user.notification_preference
-        enable_sound = user_prefs.enable_sound
-    except:
-        enable_sound = True
     
     notifications_data = []
     for notif in notifications:
@@ -1180,16 +1155,14 @@ def get_notifications(request):
             'message': notif.message,
             'type': notif.notification_type,
             'is_read': notif.is_read,
-            'order_id': notif.order.id if notif.order else None,  # Use integer ID instead of string
-            'order_number': notif.order.order_id if notif.order else None,  # Keep string for display
+            'order_id': notif.order.id if notif.order else None,
+            'order_number': notif.order.order_id if notif.order else None,
             'created_at': notif.created_at.strftime('%Y-%m-%d %H:%M'),
-            'sound_file': get_sound_for_notification(notif.notification_type) if enable_sound else None,
         })
     
     return JsonResponse({
         'notifications': notifications_data,
         'unread_count': unread_count,
-        'enable_sound': enable_sound,
     })
 
 
@@ -1257,41 +1230,23 @@ def clear_notifications(request):
 
 @login_required
 def notification_preferences(request):
-    """View and edit notification preferences"""
+    """সরল: View notification preferences - all notifications are enabled always"""
     try:
         prefs = request.user.notification_preference
     except NotificationPreference.DoesNotExist:
         prefs = NotificationPreference.objects.create(user=request.user)
     
     if request.method == 'POST':
-        # Update preferences
-        prefs.order_updates = request.POST.get('order_updates') == 'on'
-        prefs.order_confirmation = request.POST.get('order_confirmation') == 'on'
-        prefs.rider_assignments = request.POST.get('rider_assignments') == 'on'
-        prefs.general_notifications = request.POST.get('general_notifications') == 'on'
-        
-        prefs.email_on_order_updates = request.POST.get('email_on_order_updates') == 'on'
-        prefs.email_on_delivery = request.POST.get('email_on_delivery') == 'on'
-        prefs.email_on_cancellation = request.POST.get('email_on_cancellation') == 'on'
-        prefs.email_digests = request.POST.get('email_digests') == 'on'
-        
-        prefs.enable_sound = request.POST.get('enable_sound') == 'on'
-        prefs.enable_browser_notifications = request.POST.get('enable_browser_notifications') == 'on'
-        
-        prefs.quiet_hours_enabled = request.POST.get('quiet_hours_enabled') == 'on'
-        if request.POST.get('quiet_hours_start'):
-            prefs.quiet_hours_start = request.POST.get('quiet_hours_start')
-        if request.POST.get('quiet_hours_end'):
-            prefs.quiet_hours_end = request.POST.get('quiet_hours_end')
-        
+        # সব notification enabled থাকবে সবসময়
+        prefs.enabled = True
         prefs.save()
-        push_notification_preferences(request.user)
-        messages.success(request, 'Notification preferences updated successfully!')
+        messages.success(request, 'Notification settings updated!')
         return redirect('notification_preferences')
     
     context = {
         'prefs': prefs,
-        'title': 'Notification Preferences'
+        'title': 'Notification Preferences',
+        'all_notifications_enabled': True,
     }
     return render(request, 'shop/notification_preferences.html', context)
 

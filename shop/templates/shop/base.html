@@ -1029,7 +1029,7 @@
     <!-- Cart AJAX Script -->
     <script src="{% static 'js/cart.js' %}"></script>
 </head>
-<body data-is-authenticated="{% if user.is_authenticated %}1{% else %}0{% endif %}" data-notifications-url="{% url 'get_notifications' %}" data-mark-all-read-url="{% url 'mark_all_notifications_read' %}" data-login-url="{% url 'login' %}" data-sound-manager-order="{% static 'notify/manager-order.mp3' %}" data-sound-order-confirmd="{% static 'notify/order-confirmd.mp3' %}" data-sound-order-push="{% static 'notify/order-push.mp3' %}">
+<body data-is-authenticated="{% if user.is_authenticated %}1{% else %}0{% endif %}" data-notifications-url="{% url 'get_notifications' %}" data-mark-all-read-url="{% url 'mark_all_notifications_read' %}" data-login-url="{% url 'login' %}">
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
         <div class="container-fluid">
@@ -1059,20 +1059,15 @@
             <script>
                 // ============ GLOBAL VARIABLES ============
                 const bodyElement = document.body;
-                const isUserAuthenticated = bodyElement.getAttribute('data-is-authenticated') === '1';
+                const userIsAuthenticated = bodyElement.getAttribute('data-is-authenticated') === '1';
                 const notificationsUrl = bodyElement.getAttribute('data-notifications-url');
                 const markAllReadUrl = bodyElement.getAttribute('data-mark-all-read-url');
                 const loginUrl = bodyElement.getAttribute('data-login-url');
-                const soundUrls = {
-                    'manager-order.mp3': bodyElement.getAttribute('data-sound-manager-order'),
-                    'order-confirmd.mp3': bodyElement.getAttribute('data-sound-order-confirmd'),
-                    'order-push.mp3': bodyElement.getAttribute('data-sound-order-push'),
-                };
                 
                 // ============ NOTIFICATION FUNCTIONS ============
                 
                 function openNotificationModal() {
-                    if (isUserAuthenticated) {
+                    if (userIsAuthenticated) {
                         const modal = new bootstrap.Modal(document.getElementById('notificationModal'));
                         loadNotifications();
                         modal.show();
@@ -1085,18 +1080,12 @@
                     fetch(notificationsUrl)
                         .then(response => response.json())
                         .then(data => {
-                            // Check if there are new unread notifications and play sound
-                            if (data.unread_count > previousUnreadCount && data.unread_count > 0 && data.enable_sound) {
-                                // Play sound for the first unread notification
-                                const unreadNotif = data.notifications.find(n => !n.is_read);
-                                if (unreadNotif && unreadNotif.sound_file) {
-                                    playNotificationSound(unreadNotif.sound_file);
-                                    // Show toast notification
-                                    const iconClass = getNotificationIconClass(unreadNotif.type);
-                                    showToastNotification(unreadNotif.title + ': ' + unreadNotif.message, getNotificationColor(unreadNotif.type), iconClass);
-                                }
+                            // সরাসরি notification দেখাও
+                            const unreadNotif = data.notifications.find(n => !n.is_read);
+                            if (unreadNotif) {
+                                const iconClass = getNotificationIconClass(unreadNotif.type);
+                                showToastNotification(unreadNotif.title + ': ' + unreadNotif.message, getNotificationColor(unreadNotif.type), iconClass);
                             }
-                            previousUnreadCount = data.unread_count;
                             displayNotifications(data.notifications, data.unread_count);
                         })
                         .catch(error => console.error('Error:', error));
@@ -1229,32 +1218,7 @@
                         .catch(error => console.error('Error:', error));
                 }
                 
-                // ============ SOUND NOTIFICATION FUNCTIONS ============
-                let previousUnreadCount = 0;
-                let playedNotificationIds = new Set();
-                const audioCache = {};
-                
-                function playNotificationSound(soundFile) {
-                    if (!soundFile) return;
-                    
-                    try {
-                        const soundPath = soundUrls[soundFile] || '/static/notify/' + soundFile; // fallback
-                        if (!audioCache[soundPath]) {
-                            audioCache[soundPath] = new Audio(soundPath);
-                            audioCache[soundPath].volume = 0.7;
-                        }
-                        const audio = audioCache[soundPath];
-                        if (audio.paused || audio.ended) {
-                            audio.currentTime = 0;
-                            audio.play().catch(err => {
-                                console.log('Could not play notification sound:', err);
-                            });
-                        }
-                    } catch (e) {
-                        console.error('Error playing notification sound:', e);
-                    }
-                }
-                
+                // ============ TOAST NOTIFICATION FUNCTIONS ============
                 function showToastNotification(message, type = 'info', icon = 'fas fa-info-circle') {
                     const container = document.getElementById('notification-toast-container');
                     const toastId = 'toast-' + Date.now();
@@ -1282,7 +1246,7 @@
                 
                 // Load notification badge on page load
                 document.addEventListener('DOMContentLoaded', function() {
-                    if (isUserAuthenticated) {
+                    if (userIsAuthenticated) {
                         loadNotifications();
                         // Refresh notifications every 30 seconds
                         setInterval(loadNotifications, 30000);

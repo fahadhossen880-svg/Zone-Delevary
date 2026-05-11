@@ -227,35 +227,6 @@ def set_user_location(user_id, latitude, longitude, is_in_service, zones=None):
 
 def push_notification_preferences(user):
     """User notification preferences Firebase Realtime DB এ sync করুন"""
-    try:
-        if not user or not hasattr(user, 'notification_preference'):
-            return False
-
-        prefs = user.notification_preference
-        ref = get_firebase_db_ref(f'user_preferences/{user.id}')
-        if not ref:
-            return False
-
-        ref.set({
-            'order_updates': prefs.order_updates,
-            'order_confirmation': prefs.order_confirmation,
-            'rider_assignments': prefs.rider_assignments,
-            'general_notifications': prefs.general_notifications,
-            'email_on_order_updates': prefs.email_on_order_updates,
-            'email_on_delivery': prefs.email_on_delivery,
-            'email_on_cancellation': prefs.email_on_cancellation,
-            'email_digests': prefs.email_digests,
-            'enable_sound': prefs.enable_sound,
-            'enable_browser_notifications': prefs.enable_browser_notifications,
-            'quiet_hours_enabled': prefs.quiet_hours_enabled,
-            'quiet_hours_start': prefs.quiet_hours_start.isoformat() if prefs.quiet_hours_start else None,
-            'quiet_hours_end': prefs.quiet_hours_end.isoformat() if prefs.quiet_hours_end else None,
-            'updated_at': prefs.updated_at.isoformat() if prefs.updated_at else None,
-        })
-        return True
-    except Exception as e:
-        print(f"Firebase push notification preferences error: {e}")
-        return False
 
 
 def upload_to_firebase(file, destination_path):
