@@ -1138,9 +1138,26 @@ def checkout(request):
 
 # ============ NOTIFICATION VIEWS ============
 
+def get_sound_for_notification(notification_type):
+    """Map notification types to sound files"""
+    sound_mapping = {
+        'order_confirmation': 'order-confirmd.mp3',
+        'order_processing': 'order-push.mp3',
+        'order_picked': 'order-push.mp3',
+        'order_in_transit': 'order-push.mp3',
+        'order_delivered': 'order-push.mp3',
+        'order_cancelled': 'order-push.mp3',
+        'rider_assigned': 'manager-order.mp3',
+        'rider_near': 'order-push.mp3',
+        'payment_reminder': 'order-push.mp3',
+        'general': 'order-push.mp3',
+    }
+    return sound_mapping.get(notification_type, 'order-push.mp3')
+
+
 @login_required
 def get_notifications(request):
-    """সরল: Get all notifications for logged-in user"""
+    """Get all notifications for logged-in user with sound files"""
     notifications = Notification.objects.filter(
         user=request.user,
         is_deleted=False
@@ -1158,6 +1175,7 @@ def get_notifications(request):
             'order_id': notif.order.id if notif.order else None,
             'order_number': notif.order.order_id if notif.order else None,
             'created_at': notif.created_at.strftime('%Y-%m-%d %H:%M'),
+            'sound_file': get_sound_for_notification(notif.notification_type),
         })
     
     return JsonResponse({
