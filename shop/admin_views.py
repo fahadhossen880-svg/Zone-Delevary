@@ -580,8 +580,7 @@ def manager_approve_order(request, order_id):
                     notification_type='order_processing',
                     title='Order Approved ✓',
                     message=f'Your order #{order.order_id} has been approved. Rider will be assigned soon.',
-                    order=order,
-                    send_email=True
+                    order=order
                 )
             
             messages.success(request, f'অর্ডার {order.order_id} অনুমোদিত হয়েছে। এখন রাইডার নির্ধারণ করুন।')
@@ -601,8 +600,7 @@ def manager_approve_order(request, order_id):
                     notification_type='order_cancelled',
                     title='Order Cancelled ✗',
                     message=f'Your order #{order.order_id} has been cancelled. Reason: {reason}',
-                    order=order,
-                    send_email=True
+                    order=order
                 )
             
             messages.info(request, f'অর্ডার {order.order_id} প্রত্যাখ্যান করা হয়েছে।')
@@ -804,8 +802,7 @@ def manager_return_request(request, order_id):
                 notification_type='return_approved',
                 title='রিটার্ন অনুমোদিত',
                 message=f'আপনার অর্ডার #{order.order_id} রিটার্ন অনুমোদিত হয়েছে। শীঘ্রই রাইডার পণ্য সংগ্রহ করবেন।',
-                order=order,
-                send_email=True
+                order=order
             )
             
             messages.success(request, f'অর্ডার #{order.order_id} এর রিটার্ন অনুমোদন করা হয়েছে।')

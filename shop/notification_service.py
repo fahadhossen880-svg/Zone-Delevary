@@ -10,7 +10,7 @@ from .models import Notification, NotificationPreference, Order
 from .firebase_config import push_realtime_notification, send_fcm_notification_to_user
 
 
-def create_notification(user, notification_type, title, message, order=None):
+def create_notification(user, notification_type, title, message, order=None, send_email=False):
     """
     সরল: Create a notification for a user and sync to Firebase immediately
     
@@ -20,6 +20,7 @@ def create_notification(user, notification_type, title, message, order=None):
         title: Notification title
         message: Notification message
         order: Related Order instance (optional)
+        send_email: legacy flag, currently ignored in the simplified system
     
     Returns:
         Notification instance or None if creation failed

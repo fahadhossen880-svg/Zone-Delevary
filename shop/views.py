@@ -683,8 +683,7 @@ def rider_return_delivery(request, order_id):
                 notification_type='return_requested',
                 title='রিটার্ন অনুরোধ',
                 message=f'অর্ডার #{order.order_id} রিটার্নের জন্য অনুরোধ করা হয়েছে। কারণ: {reason}',
-                order=order,
-                send_email=True
+                order=order
             )
         else:
             messages.warning(request, 'ম্যানেজার অ্যাসাইন করা হয়নি। অ্যাডমিনকে জানান।')
